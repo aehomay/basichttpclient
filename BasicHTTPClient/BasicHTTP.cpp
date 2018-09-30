@@ -17,7 +17,7 @@ void BasicHTTP::Connect(const char * hostname, int port)
 	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != NO_ERROR)
 	{
-		cout << "WSAStartup failed. The failure code is:" << iResult << "\n";
+		cout << "WSAStartup failed. The failure code is:" << iResult << endl;
 		exit(1);
 	}
 
@@ -25,7 +25,7 @@ void BasicHTTP::Connect(const char * hostname, int port)
 
 	if (win_socket == INVALID_SOCKET)
 	{
-		cout << "Could not connect. The error code is:" << WSAGetLastError() << "\n";
+		cout << "Could not connect. The error code is:" << WSAGetLastError() << endl;
 		WSACleanup();
 		exit(1);
 	}
@@ -47,11 +47,22 @@ void BasicHTTP::Connect(const char * hostname, int port)
 	iResult = connect(win_socket, (SOCKADDR*)(&SockAddr), sizeof(SockAddr));
 	if (iResult == SOCKET_ERROR)
 	{
-		cout << "Could not connect. The error code is:" << iResult;
+		cout << "Could not connect. The error code is:" << iResult << endl;
 		Disconnect();
 		exit(1);
 	}
-	cout << "Connected.\n";
+	cout << "Connected." << endl;
+}
+
+void BasicHTTP::Shutdown()
+{
+	// shutdown the connection since no more data will be sent
+	int iResult = shutdown(win_socket, SD_SEND);
+	if (iResult == SOCKET_ERROR) {
+		cout << "shutdown failed:" << WSAGetLastError() << endl;
+		Disconnect();
+	}
+	cout << "Socket shutdown successfully." << endl;
 }
 
 void BasicHTTP::Disconnect()
@@ -60,12 +71,13 @@ void BasicHTTP::Disconnect()
 	WSACleanup();
 }
 
-void BasicHTTP::Get(const char * hostname, int port, const char * resource, const char * opt_urlencoded, string & response)
+std::string BasicHTTP::Get(const char * hostname, int port, const char * resource, const char * opt_urlencoded)
 {
 	Connect(hostname, port);
 
+	std::string response;
 	// Build request
-	string req = "GET";
+	std::string req = "GET";
 	req.append(" ");
 	req.append(resource);
 	req.append(" HTTP/1.1\r\n");
@@ -88,16 +100,18 @@ void BasicHTTP::Get(const char * hostname, int port, const char * resource, cons
 	Send(req);
 
 	Receive(response);
-
+	Shutdown();
 	Disconnect();
+	return response;
 }
 
-void BasicHTTP::Post(const char * hostname, int port, const char * resource, const char * opt_urlencoded, string & response)
+std::string BasicHTTP::Post(const char * hostname, int port, const char * resource, const char * opt_urlencoded)
 {
 	Connect(hostname, port);
 
+	std::string response;
 	// Build request
-	string req = "POST";
+	std::string req = "POST";
 	req.append(" ");
 	req.append(resource);
 	req.append(" HTTP/1.1\r\n");
@@ -126,19 +140,18 @@ void BasicHTTP::Post(const char * hostname, int port, const char * resource, con
 		<< endl;
 
 	Send(req);
-
 	Receive(response);
-
 	Disconnect();
+	return response;
 }
 
 void BasicHTTP::Send(std::string &req)
 {
 	int iResult = send(win_socket, req.c_str(), req.size(), 0);
 	if (iResult == SOCKET_ERROR)
-		cout << "send failed: %d\n" << WSAGetLastError();
+		cout << "send failed:" << WSAGetLastError() << endl;
 	else
-		cout << "Bytes Sent: %ld\n" << iResult;
+		cout << "Bytes Sent:" << iResult << endl;
 }
 
 
@@ -146,17 +159,35 @@ void BasicHTTP::Receive(std::string & response)
 {
 	char buffer[DEFAULT_BUFLEN];
 	int iResult;
+	fd_set set;
+	struct timeval timeout;
+	FD_ZERO(&set); /* clear the set */
+	FD_SET(win_socket, &set); /* add our file descriptor to the set */
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
 	do
 	{
-		iResult = recv(win_socket, buffer, 200, 0);
-
-		if (iResult > 0)
-			response.append(buffer, 0, iResult);
+		iResult = select(win_socket + 1, &set, NULL, NULL, &timeout);
+		if (iResult == SOCKET_ERROR)
+		{
+			// select error...
+		}
 		else if (iResult == 0)
-			cout << "Connection closed.\n";
+		{
+			// timeout, socket does not have anything to read
+			break;
+		}
 		else
-			cout << "Receive failed: %d\n" << WSAGetLastError();
+		{
+			iResult = recv(win_socket, buffer, DEFAULT_BUFLEN, 0);
 
-
+			if (iResult > 0)
+				response.append(buffer, 0, iResult);
+			else if (iResult == 0)
+				cout << "Connection closed." << endl;
+			else
+				cout << "Receive failed:" << WSAGetLastError() << endl;
+		}
+		
 	} while (iResult > 0);
 }

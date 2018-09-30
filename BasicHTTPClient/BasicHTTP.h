@@ -13,30 +13,32 @@ public:
 	BasicHTTP();
 	~BasicHTTP();
 
-	void Get(
+	std::string Get(
 		const char* hostname,
 		int port,
 		const char* resource,
-		const char* opt_urlencoded,
-		string& response);
+		const char* opt_urlencoded);
 
 	void Send(std::string &req);
 
-	void Post(
+	std::string Post(
 		const char* hostname,
 		int port,
 		const char* resource,
-		const char* opt_urlencoded,
-		string& response);
+		const char* opt_urlencoded);
 
 	void Receive(std::string & response);
 
-private:
 	void  Connect(
 		const char * hostname,
 		int port);
 
 	void Disconnect();
+
+	void Shutdown();
+
+private:
+
 
 	SOCKET win_socket = INVALID_SOCKET;
 };
