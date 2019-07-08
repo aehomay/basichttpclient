@@ -23,7 +23,7 @@
     <ProjectGuid>{1321DBCC-9D30-4A39-90B2-6956303B80BE}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ConsoleApplication2</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>BasicHTTPClient</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -155,6 +155,7 @@
   <ItemGroup>
     <ClInclude Include="BasicHTTP.h" />
     <ClInclude Include="BasicHTTPClient.h" />
+    <ClInclude Include="StopWatch.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
